@@ -9,3 +9,8 @@
 - Added schema field documentation (`docs/schema_v0.md`).
 - Added good/bad example JSON files.
 - Added pytest schema validation tests.
+## [Unreleased]
+- M1-C1 完成：schema 装载与缓存接口（load_schema/validate/list_schemas/clear_caches，支持 AC_SCHEMA_DIR 覆盖，缓存命中测试通过）
+
+## [0.1.0-dev] - 初始
+- 项目骨架与 CLI --version
