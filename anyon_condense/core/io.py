@@ -8,6 +8,7 @@ from typing import Any, Dict
 
 from .exceptions import DataIOError, SchemaError, ValidationError
 from .logging import get_logger
+from .provenance import ensure_provenance_inplace
 from .schema import validate
 
 JsonDict = Dict[str, Any]
@@ -103,6 +104,7 @@ def load_umtc_input(path: str | pathlib.Path) -> JsonDict:
 def write_umtc_output(path: str | pathlib.Path, payload: JsonDict) -> None:
     """Validate and write an ``ac-umtc`` output document."""
 
+    ensure_provenance_inplace(payload)
     logger.debug("write_umtc_output path=%s", path)
     _validate_or_raise(payload, "umtc_output.schema.json")
     resolved = _to_path(path)

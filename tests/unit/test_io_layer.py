@@ -55,14 +55,18 @@ def test_write_umtc_output_success(tmp_path: pathlib.Path) -> None:
     assert "provenance" in saved
 
 
-def test_write_umtc_output_validation_error(tmp_path: pathlib.Path) -> None:
-    bad_payload = json.loads(
+def test_write_umtc_output_missing_provenance_auto_injected(
+    tmp_path: pathlib.Path,
+) -> None:
+    payload = json.loads(
         (EXAMPLES_DIR / "bad_umtc_output_missing_provenance.json").read_text(
             encoding="utf-8"
         )
     )
-    with pytest.raises(ValidationError):
-        write_umtc_output(tmp_path / "bad.json", bad_payload)
+    out_path = tmp_path / "auto.json"
+    write_umtc_output(out_path, payload)
+    saved = json.loads(out_path.read_text(encoding="utf-8"))
+    assert "provenance" in saved
 
 
 def test_write_umtc_output_io_error_when_path_is_directory(
