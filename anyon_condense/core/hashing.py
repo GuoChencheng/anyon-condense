@@ -19,6 +19,16 @@ def _sha256_bytes(data: bytes) -> str:
     return _SHA_PREFIX + hashlib.sha256(data).hexdigest()
 
 
+def hash_json_value(value: Any) -> str:
+    """Return ``sha256:<hex>`` for any JSON-compatible ``value``."""
+
+    try:
+        serialized = canonical_json_dump({"_": value})
+    except CanonicalizationError as exc:
+        raise HashingError(f"Canonicalization failed for value: {exc}") from exc
+    return _sha256_bytes(serialized.encode("utf-8"))
+
+
 def sha256_of_payload(payload: Dict[str, Any]) -> str:
     """Return `sha256:<hex>` for a JSON-compatible dict payload."""
 
@@ -86,4 +96,39 @@ def content_address(obj: Any, kind: str) -> str:
     return f"{safe_kind}:{_sha256_bytes(serialized.encode('utf-8'))}"
 
 
-__all__ = ["sha256_of_payload", "hash_matrix", "content_address"]
+def attach_hashes_inplace(payload: dict, fields: Sequence[str] | None = None) -> dict:
+    """Ensure ``payload['hashes']`` contains hashes for key substructures."""
+
+    keys = (
+        list(fields)
+        if fields is not None
+        else [
+            "objects",
+            "qdim",
+            "global_dim",
+            "twist",
+            "S",
+            "T",
+        ]
+    )
+
+    hashes = payload.get("hashes")
+    if not isinstance(hashes, dict):
+        hashes = {}
+        payload["hashes"] = hashes
+
+    for key in keys:
+        if key not in payload or key in hashes:
+            continue
+        hashes[key] = hash_json_value(payload[key])
+
+    return hashes
+
+
+__all__ = [
+    "sha256_of_payload",
+    "hash_matrix",
+    "content_address",
+    "hash_json_value",
+    "attach_hashes_inplace",
+]

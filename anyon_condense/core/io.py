@@ -7,6 +7,7 @@ import pathlib
 from typing import Any, Dict
 
 from .exceptions import DataIOError, SchemaError, ValidationError
+from .hashing import attach_hashes_inplace
 from .logging import get_logger
 from .provenance import ensure_provenance_inplace
 from .schema import validate
@@ -102,9 +103,15 @@ def load_umtc_input(path: str | pathlib.Path) -> JsonDict:
 
 
 def write_umtc_output(path: str | pathlib.Path, payload: JsonDict) -> None:
-    """Validate and write an ``ac-umtc`` output document."""
+    """Validate and write an ``ac-umtc`` output document to JSON file."""
 
     ensure_provenance_inplace(payload)
+    try:
+        attach_hashes_inplace(payload)
+    except Exception as exc:  # pragma: no cover - defensive funnel to DataIOError
+        logger.error("[ACHASH01] hash_error msg=%s exc=%s", exc, exc.__class__.__name__)
+        raise DataIOError(f"[ACHASH01] hash_error: {exc}") from exc
+
     logger.debug("write_umtc_output path=%s", path)
     _validate_or_raise(payload, "umtc_output.schema.json")
     resolved = _to_path(path)

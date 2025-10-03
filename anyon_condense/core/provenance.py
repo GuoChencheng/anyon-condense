@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from datetime import datetime as _datetime
 from datetime import timezone as _timezone
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from anyon_condense import __version__ as _AC_VERSION
 
@@ -60,17 +60,36 @@ def build_provenance(
     }
 
 
+def sanitize_sources(sources: Optional[Sequence[Any]]) -> List[str]:
+    """Normalise incoming ``sources`` entries into trimmed strings."""
+
+    if sources is None:
+        return []
+
+    items: Sequence[Any]
+    if isinstance(sources, (str, bytes)):
+        items = [sources]
+    else:
+        items = sources
+
+    normalised: List[str] = []
+    for entry in items:
+        if entry is None:
+            continue
+        text = str(entry).strip()
+        if not text:
+            continue
+        normalised.append(text)
+    return normalised
+
+
 def ensure_provenance_inplace(payload: Dict[str, Any]) -> None:
     """Ensure payload contains minimal provenance (merge-only, never overwrite)."""
 
-    tmp_sources = None
-    if isinstance(payload.get("_sources"), list):
-        tmp_sources = [
-            str(s) for s in payload.get("_sources", []) if isinstance(s, str)
-        ]
+    tmp_sources = sanitize_sources(payload.get("_sources"))
     payload.pop("_sources", None)
 
-    base = build_provenance(tmp_sources)
+    base = build_provenance(tmp_sources or None)
     if not isinstance(payload.get("provenance"), dict):
         payload["provenance"] = base
         return
@@ -78,3 +97,28 @@ def ensure_provenance_inplace(payload: Dict[str, Any]) -> None:
     prov = payload["provenance"]
     for key, value in base.items():
         prov.setdefault(key, value)
+
+
+def append_sources_inplace(
+    payload: Dict[str, Any], more_sources: Sequence[Any]
+) -> None:
+    """Merge additional ``more_sources`` into ``payload['provenance'].sources``."""
+
+    ensure_provenance_inplace(payload)
+
+    prov = payload.get("provenance")
+    if not isinstance(prov, dict):  # Defensive, should not happen after ensure
+        raise TypeError("payload['provenance'] must be a dict after ensure")
+
+    base_norm = sanitize_sources(prov.get("sources"))
+    add_norm = sanitize_sources(more_sources)
+
+    seen = set(base_norm)
+    merged: List[str] = list(base_norm)
+    for source in add_norm:
+        if source in seen:
+            continue
+        merged.append(source)
+        seen.add(source)
+
+    prov["sources"] = merged
