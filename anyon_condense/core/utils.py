@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, TypeGuard, Union
 
 from .exceptions import CanonicalizationError
 
@@ -26,8 +26,12 @@ def _type_rank(value: JSONScalar) -> int:
     return 99
 
 
-def _is_scalar(value: Any) -> bool:
+def _is_scalar(value: Any) -> TypeGuard[JSONScalar]:
     return value is None or isinstance(value, (bool, int, float, str))
+
+
+def _all_scalars(seq: List[JSONType]) -> TypeGuard[List[JSONScalar]]:
+    return all(_is_scalar(item) for item in seq)
 
 
 def _normalize_float(value: float, path: str) -> float:
@@ -55,7 +59,7 @@ def _normalize_node(node: Any, path: str, *, reorder_arrays: bool) -> JSONType:
             _normalize_node(value, f"{path}[{index}]", reorder_arrays=reorder_arrays)
             for index, value in enumerate(node)
         ]
-        if reorder_arrays and all(_is_scalar(item) for item in normalized_items):
+        if reorder_arrays and _all_scalars(normalized_items):
 
             def key_fn(item: JSONScalar) -> Tuple[int, Tuple[Any, ...]]:
                 rank = _type_rank(item)
@@ -67,7 +71,7 @@ def _normalize_node(node: Any, path: str, *, reorder_arrays: bool) -> JSONType:
                     return rank, (item,)
                 return 99, (str(item),)
 
-            normalized_items = sorted(normalized_items, key=key_fn)
+            normalized_items.sort(key=key_fn)
         return normalized_items
 
     if node is None or isinstance(node, bool) or isinstance(node, str):
