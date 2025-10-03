@@ -11,10 +11,13 @@ from jsonschema import Draft202012Validator
 from jsonschema import exceptions as js_ex
 
 from .exceptions import SchemaError
+from .logging import get_logger
 
 # Internal caches keyed by fully-resolved schema directory + filename.
 _SCHEMA_CACHE: Dict[str, dict[str, Any]] = {}
 _VALIDATOR_CACHE: Dict[str, Draft202012Validator] = {}
+
+logger = get_logger(__name__)
 
 
 def get_default_schema_dir() -> pathlib.Path:
@@ -24,28 +27,28 @@ def get_default_schema_dir() -> pathlib.Path:
 
 
 def resolve_schema_dir(override: Optional[str | pathlib.Path] = None) -> pathlib.Path:
-    """Resolve the active schema directory.
-
-    Resolution order (highest priority first):
-      1. Explicit *override* argument (non-empty)
-      2. Environment variable ``AC_SCHEMA_DIR``
-      3. Repository default ``schemas`` directory
-    """
+    """Resolve the active schema directory."""
 
     if override:
         path = pathlib.Path(override).expanduser().resolve()
         if not path.is_dir():
+            logger.error("[ACIO01] read_error (schema_dir_missing) path=%s", path)
             raise SchemaError(f"Schema dir override not found: {path}")
+        logger.debug("schema_dir_resolved path=%s", path)
         return path
 
     env_override = os.environ.get("AC_SCHEMA_DIR")
     if env_override:
         path = pathlib.Path(env_override).expanduser().resolve()
         if not path.is_dir():
+            logger.error("[ACIO01] read_error (schema_dir_missing) path=%s", path)
             raise SchemaError(f"AC_SCHEMA_DIR does not exist: {path}")
+        logger.debug("schema_dir_resolved path=%s", path)
         return path
 
-    return get_default_schema_dir()
+    path = get_default_schema_dir()
+    logger.debug("schema_dir_resolved path=%s", path)
+    return path
 
 
 def _schema_path_by_name(
@@ -59,6 +62,7 @@ def _schema_path_by_name(
     base = resolve_schema_dir(schema_dir)
     path = (base / name).resolve()
     if not path.is_file():
+        logger.error("[ACIO01] read_error (schema_file_missing) path=%s", path)
         raise SchemaError(f"Schema file not found: {path}")
     return path
 
@@ -88,6 +92,7 @@ def load_schema(
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:  # pragma: no cover - defensive
+        logger.error("[ACIO01] read_error name=%s exc=%s", name, exc.__class__.__name__)
         raise SchemaError(f"Failed to read schema '{name}': {exc}") from exc
 
     if not isinstance(payload, dict) or "$schema" not in payload:
@@ -121,23 +126,23 @@ def validate(
     schema_name: str,
     schema_dir: Optional[str | pathlib.Path] = None,
 ) -> None:
-    """Validate *payload* against *schema_name*.
-
-    Raises ``SchemaError`` if validation fails. Error message includes the
-    schema name, resolved schema path (respecting overrides), and the first
-    failing location/message for quick triage.
-    """
+    """Validate *payload* against *schema_name*."""
 
     validator = _get_validator(schema_name, schema_dir)
     try:
         validator.validate(payload)
     except js_ex.ValidationError as exc:
         location = " → ".join(str(part) for part in exc.path) or "(root)"
-        # Resolve the schema path for clearer diagnostics
         schema_path = _schema_path_by_name(schema_name, schema_dir)
         msg = (
             f"Schema validation error in '{schema_name}' at {location} "
             f"(schema={schema_path}): {exc.message}"
+        )
+        logger.error(
+            "[ACVAL01] schema_validation_error schema=%s loc=%s msg=%s",
+            schema_name,
+            location,
+            exc.message,
         )
         raise SchemaError(msg) from exc
 
