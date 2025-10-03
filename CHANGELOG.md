@@ -14,3 +14,9 @@
 
 ## [0.1.0-dev] - 初始
 - 项目骨架与 CLI --version
+## [0.1.0-dev] - Add schema loader & IO layer (M1-C1,C2)
+- Schema caching and validation API, unified IO load_*/write_* functions with new exceptions.
+## [0.1.0-dev] - Schema 装载与 IO 统一入口 (M1-C1,C2)
+- Schema 装载与缓存；IO 统一入口（load_*/write_*）与异常模型。
+## [0.1.0-dev] - Schema 装载与缓存；IO 统一入口 (M1-C1,C2)
+- Schema 装载与缓存；IO 统一入口（load_*/write_*）与异常模型。

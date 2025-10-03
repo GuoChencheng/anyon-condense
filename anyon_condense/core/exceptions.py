@@ -1,7 +1,19 @@
-"""Custom exception types for the core package."""
+"""Custom exception types used across the core package."""
 
 
 class SchemaError(Exception):
-    """Reserved for schema/validation related errors."""
+    """Raised for schema loading/validator building issues."""
+
+    pass
+
+
+class ValidationError(Exception):
+    """Raised when a payload fails JSON Schema validation."""
+
+    pass
+
+
+class DataIOError(Exception):
+    """Raised for filesystem or JSON parsing related IO failures."""
 
     pass

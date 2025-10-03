@@ -1,0 +1,16 @@
+name: Release on tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show tag info
+        run: |
+          echo "Tagged release: $GITHUB_REF_NAME"
+          python -V

@@ -2,30 +2,25 @@ import json
 import pathlib
 
 import pytest
-from jsonschema import exceptions as js_ex
 
+from anyon_condense.core.exceptions import SchemaError
 from anyon_condense.core.schema import validate
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-EX = ROOT / "tests" / "examples"
+EXAMPLES_DIR = ROOT / "tests" / "examples"
 
 
-def _load(name: str):
-    return json.loads((EX / name).read_text())
+def _load(name: str) -> dict:
+    return json.loads((EXAMPLES_DIR / name).read_text(encoding="utf-8"))
 
 
-def _assert_valid(schema_name: str, example_name: str):
-    doc = _load(example_name)
-    validate(doc, schema_name)
+def _assert_valid(schema_name: str, example_name: str) -> None:
+    validate(_load(example_name), schema_name)
 
 
-def _assert_invalid(schema_name: str, example_name: str):
-    doc = _load(example_name)
-    with pytest.raises(js_ex.ValidationError):
-        validate(doc, schema_name)
-
-
-# 下面保留你已有的测试用例调用即可
+def _assert_invalid(schema_name: str, example_name: str) -> None:
+    with pytest.raises(SchemaError):
+        validate(_load(example_name), schema_name)
 
 
 # --- mfusion ---
