@@ -1,0 +1,21 @@
+{
+  "format": "ac-umtc",
+  "version": "0.1",
+  "encoding": "float",
+  "number_field": "cyclotomic(8)",
+  "category_type": "umtc",
+  "objects": ["1"],
+  "qdim": { "1": 1.0 },
+  "global_dim": 1.0,
+  "twist": { "1": 1.0 },
+  "S": [[1.0]],
+  "T": [[1.0]],
+  "checks": {},
+  "hashes": {},
+  "provenance": {
+    "generated_by": "ac 0.1.0-dev",
+    "date": "2025-01-01T00:00:00Z",
+    "sources": ["tests/examples/toric_umtc_input.min.json"]
+  },
+  "oops": "this key should not exist"
+}
