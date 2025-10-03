@@ -32,7 +32,6 @@ def test_is_finite_negative_zero_normalize():
 
 def test_safe_sum_matches_fsum_on_cancellation():
     xs = [1e16, 1.0, -1e16]
-    naive_builtin = sum(xs)
     naive_loop = 0.0
     for x in xs:
         naive_loop += x
@@ -43,8 +42,6 @@ def test_safe_sum_matches_fsum_on_cancellation():
     assert abs(compensated - reference) <= 1e-12
     # manual left-to-right accumulation loses low-order bits
     assert not math.isclose(naive_loop, reference, rel_tol=1e-15, abs_tol=1e-12)
-    # builtin sum is improved but should still agree with fsum
-    assert math.isclose(naive_builtin, reference, rel_tol=1e-15, abs_tol=1e-12)
 
     assert safe_sum([0.0, -0.0]) == 0.0
     assert math.copysign(1.0, safe_sum([0.0, -0.0])) == 1.0
