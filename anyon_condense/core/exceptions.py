@@ -29,3 +29,9 @@ class HashingError(Exception):
     """Raised when hashing/canonical addressing cannot be completed."""
 
     pass
+
+
+class NumericFieldError(Exception):
+    """Raised when numeric values violate finite-domain constraints."""
+
+    pass

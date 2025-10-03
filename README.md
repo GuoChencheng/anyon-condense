@@ -20,6 +20,21 @@ python tools/demo_m1.py
 
 若看到输出里有 `Loaded mfusion input OK`、`canonical[...]`、`sha256:...`，说明环境可用。
 
+### M2（数值策略）快速演示
+
+```bash
+# 查看当前数值策略（可被环境变量覆盖）
+ac num --show-policy
+
+# 调整精度并示例格式化/近似判断
+python - <<'PY'
+from anyon_condense.scalars.numeric_policy import NumericPolicy, format_float, approx_equal
+p = NumericPolicy(fmt="auto", precision=4)
+print("format_float(1e-7):", format_float(1e-7, p))
+print("approx_equal(1, 1+5e-11):", approx_equal(1.0, 1.0+5e-11, p))
+PY
+```
+
 ---
 
 ## 安装（本地 editable）

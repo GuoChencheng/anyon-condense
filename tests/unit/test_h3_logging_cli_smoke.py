@@ -38,3 +38,14 @@ def test_cli_info_zero_and_contains_keywords():
     lo = (proc.stdout or "").lower()
     assert "python=" in lo
     assert "anyon-condense=" in lo or "anyon_condense=" in lo
+
+
+def test_cli_numeric_show_policy():
+    proc = subprocess.run(
+        [sys.executable, "-m", "anyon_condense.cli", "num", "--show-policy"],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0
+    out = proc.stdout or ""
+    assert "tol_abs" in out and "fmt" in out
