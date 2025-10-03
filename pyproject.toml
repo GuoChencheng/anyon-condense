@@ -17,9 +17,15 @@ Homepage = "https://example.com"
 [project.scripts]
 ac = "anyon_condense.__main__:main"
 
-[project.optional-dependencies]
-dev = ["pytest", "mypy", "ruff", "pre-commit"]
-
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["anyon_condense*"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

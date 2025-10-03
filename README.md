@@ -16,3 +16,16 @@ mfusion_doc = load_mfusion_input("tests/examples/Vec_Z2_mfusion.json")
 write_umtc_output("tmp/umtc_output.json", mfusion_doc)
 PY
 ```
+
+## Logging
+
+Use the bundled logger to produce consistent output:
+
+```python
+from anyon_condense.core.logging import get_logger
+
+log = get_logger(__name__, level="INFO")
+log.info("pipeline ready")
+```
+
+The default format is `ts | level | module | message`; adjust the level per caller when needed.
