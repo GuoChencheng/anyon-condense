@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: pip install -e .[dev]
+      - run: pip install pytest mypy ruff pre-commit
+      - run: ruff check anyon_condense
+      - run: mypy anyon_condense
+      - run: pytest

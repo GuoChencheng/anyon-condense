@@ -1,0 +1,10 @@
+# anyon-condense (skeleton, M1-A1)
+
+This is the minimal project skeleton for the Anyon-Condense pipeline.
+
+## Quick start
+```bash
+pip install -e .
+python -m anyon_condense
+python cli.py --version
+```
