@@ -2,20 +2,72 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
+
+# 同一分支的重复构建自动取消旧的
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  build-test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11"]
+
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      - run: pip install -e .[dev]
-      - run: pip install pytest mypy ruff pre-commit
-      - run: ruff check anyon_condense
-      - run: mypy anyon_condense
-      - run: pytest
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install project (editable) and tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install jsonschema pytest mypy ruff pre-commit
+
+      # —— 下面是你关心的四步检查 ——
+
+      - name: Jsonschema smoke (examples)
+        run: |
+          python - <<'PY'
+          import json
+          from jsonschema import Draft202012Validator
+          # 按你的示例路径校验两个好例
+          sch_mf = json.load(open("schemas/mfusion_input.schema.json"))
+          doc_mf = json.load(open("tests/examples/Vec_Z2_mfusion.json"))
+          Draft202012Validator(sch_mf).validate(doc_mf)
+          sch_ui = json.load(open("schemas/umtc_input.schema.json"))
+          doc_ui = json.load(open("tests/examples/toric_umtc_input.min.json"))
+          Draft202012Validator(sch_ui).validate(doc_ui)
+          print("jsonschema smoke PASS")
+          PY
+
+      - name: Ruff (lint)
+        run: ruff check anyon_condense
+
+      - name: Mypy (type check)
+        run: mypy anyon_condense
+
+      - name: Pytest (unit tests)
+        run: pytest -q
+
+      # （可选）失败时上传 pytest 的简单日志，方便定位
+      - name: On failure, print tree and config
+        if: failure()
+        run: |
+          echo "=== repo tree ==="
+          ls -R
+          echo "=== python version ==="
+          python -V
+          echo "=== pip list ==="
+          pip list
