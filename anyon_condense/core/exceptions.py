@@ -17,3 +17,9 @@ class DataIOError(Exception):
     """Raised for filesystem or JSON parsing related IO failures."""
 
     pass
+
+
+class CanonicalizationError(Exception):
+    """Raised when payload cannot be canonicalized."""
+
+    pass
