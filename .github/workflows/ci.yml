@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [ main, master ]
 
-# 同一分支的重复构建自动取消旧的
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -23,45 +22,39 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Show repo tree (debug)
+        run: |
+          pwd
+          ls -la
+          echo "----"
+          find . -maxdepth 3 -type f | sort
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
 
-      - name: Install project (editable) and tools
+      - name: Install project and tools
         run: |
           python -m pip install --upgrade pip
-          pip install -e .[dev]
+          pip install -e .
+          pip install jsonschema pytest mypy ruff pre-commit
 
-      # —— 下面是你关心的四步检查 ——
-
+      # —— Schema 冒烟校验（根目录 paths）——
       - name: Jsonschema smoke (examples)
         run: |
           python - <<'PY'
-          from pathlib import Path
           import json
           from jsonschema import Draft202012Validator
-
-          root = Path.cwd()
-          checks = {
-              "schemas/mfusion_input.schema.json": "tests/examples/Vec_Z2_mfusion.json",
-              "schemas/umtc_input.schema.json": "tests/examples/toric_umtc_input.min.json",
-          }
-
-          for schema_rel, example_rel in checks.items():
-              schema_path = root / schema_rel
-              example_path = root / example_rel
-
-              if not schema_path.exists():
-                  raise SystemExit(f"Missing schema file: {schema_path}")
-              if not example_path.exists():
-                  raise SystemExit(f"Missing example file: {example_path}")
-
-              schema = json.loads(schema_path.read_text(encoding="utf-8"))
-              document = json.loads(example_path.read_text(encoding="utf-8"))
-              Draft202012Validator(schema).validate(document)
-
+          # mfusion: good example
+          with open("schemas/mfusion_input.schema.json") as f: sch = json.load(f)
+          with open("tests/examples/Vec_Z2_mfusion.json") as f: doc = json.load(f)
+          Draft202012Validator(sch).validate(doc)
+          # umtc_input: good example
+          with open("schemas/umtc_input.schema.json") as f: sch2 = json.load(f)
+          with open("tests/examples/toric_umtc_input.min.json") as f: doc2 = json.load(f)
+          Draft202012Validator(sch2).validate(doc2)
           print("jsonschema smoke PASS")
           PY
 
@@ -71,16 +64,13 @@ jobs:
       - name: Mypy (type check)
         run: mypy anyon_condense
 
-      - name: Pytest (unit tests)
+      - name: Pytest
         run: pytest -q
 
-      # （可选）失败时上传 pytest 的简单日志，方便定位
-      - name: On failure, print tree and config
+      # 失败时打印更多信息，方便排查
+      - name: On failure, print env info
         if: failure()
         run: |
-          echo "=== repo tree ==="
-          ls -R
-          echo "=== python version ==="
-          python -V
-          echo "=== pip list ==="
-          pip list
+          echo "=== python ==="; python -V
+          echo "=== pip list (top 50)==="; pip list | head -n 50
+          echo "=== tree (top) ==="; find . -maxdepth 2 -type d -print
