@@ -81,17 +81,22 @@
   "checks": {
     "note": "v0: content unconstrained"
   },
-  "hashes": {
-    "placeholder": "sha256:deadbeef"
-  },
   "provenance": {
     "generated_by": "ac 0.1.0-dev",
-    "date": "2025-10-03T09:12:12Z",
+    "date": "2025-10-03T10:10:59Z",
     "toolchain_version": "py3.12|ruff0.13.3|mypy1.18.2",
     "exact_backend_id": null,
     "numeric_policy": null,
     "sources": [
       "tests/examples/toric_umtc_input.min.json"
     ]
+  },
+  "hashes": {
+    "objects": "sha256:644bf5e96f40402e70c17b9242d24beabaae6afb74d7669e65b870366cab187f",
+    "qdim": "sha256:61fc7c7127b9060a242a22a91b67ab6f0b7e373b38b1ecc33cb809876fca2c3f",
+    "global_dim": "sha256:313beb4a3e7d36b20e861dd6fb0da9a05b248d4532c5eb078d68a8fbdea1d4bd",
+    "twist": "sha256:eac8744de908349711185f69ccb381a79b6b8310c1f2fefecbd4acaceb96e1ab",
+    "S": "sha256:cd7fef46cef63d9876f1d81eabc25c2180d74836991285542a213d5318acfa3c",
+    "T": "sha256:f5dce219482f38f99bbe5a3c377ff7a778233e1b84d23c28b558d1e72944e1d2"
   }
 }

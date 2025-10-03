@@ -5,9 +5,12 @@ from __future__ import annotations
 
 import json
 import pathlib
+import sys as _sys
 
-from anyon_condense.core.exceptions import SchemaError
-from anyon_condense.core.schema import validate
+# Ensure repository root is importable when running this script directly
+_ROOT = pathlib.Path(__file__).resolve().parents[1]
+if str(_ROOT) not in _sys.path:
+    _sys.path.insert(0, str(_ROOT))
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 EXAMPLES_DIR = ROOT / "tests" / "examples"
@@ -29,8 +32,20 @@ def load_json(example_name: str) -> dict:
     return json.loads((EXAMPLES_DIR / example_name).read_text(encoding="utf-8"))
 
 
+def _get_ac_api():
+    """Return (SchemaError, validate) imported lazily to satisfy E402."""
+
+    from anyon_condense.core.exceptions import (
+        SchemaError as _SchemaError,
+    )  # noqa: WPS433
+    from anyon_condense.core.schema import validate as _validate  # noqa: WPS433
+
+    return _SchemaError, _validate
+
+
 def validate_one(schema_name: str, example_name: str, expect_fail: bool) -> bool:
     payload = load_json(example_name)
+    SchemaError, validate = _get_ac_api()
     try:
         validate(payload, schema_name)
     except SchemaError as err:

@@ -15,7 +15,7 @@ authors = [{ name = "Your Name", email = "you@example.com" }]
 Homepage = "https://example.com"
 
 [project.scripts]
-ac = "anyon_condense.__main__:main"
+ac = "anyon_condense.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

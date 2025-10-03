@@ -1,13 +1,6 @@
-"""
-Module entry point: `python -m anyon_condense`
-"""
+"""Module entry point wired to the CLI skeleton."""
 
-from . import __version__
+from .cli import main
 
-
-def main() -> None:
-    print(f"anyon-condense {__version__}")
-
-
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":  # pragma: no cover - exercised via subprocess
+    raise SystemExit(main())
