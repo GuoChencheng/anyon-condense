@@ -23,3 +23,9 @@ class CanonicalizationError(Exception):
     """Raised when payload cannot be canonicalized."""
 
     pass
+
+
+class HashingError(Exception):
+    """Raised when hashing/canonical addressing cannot be completed."""
+
+    pass
