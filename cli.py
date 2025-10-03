@@ -7,9 +7,13 @@ from anyon_condense import __version__
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="ac", description="Anyon Condense CLI (skeleton)")
+    parser = argparse.ArgumentParser(
+        prog="ac", description="Anyon Condense CLI (skeleton)"
+    )
     parser.add_argument("--version", action="store_true", help="Print version and exit")
-    parser.add_argument("--info", action="store_true", help="Print environment info and exit")
+    parser.add_argument(
+        "--info", action="store_true", help="Print environment info and exit"
+    )
     args = parser.parse_args()
 
     if args.version:
@@ -25,6 +29,7 @@ def main() -> None:
         return
 
     parser.print_help()
+
 
 if __name__ == "__main__":
     main()
