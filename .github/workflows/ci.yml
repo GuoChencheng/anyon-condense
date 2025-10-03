@@ -32,23 +32,36 @@ jobs:
       - name: Install project (editable) and tools
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install jsonschema pytest mypy ruff pre-commit
+          pip install -e .[dev]
 
       # —— 下面是你关心的四步检查 ——
 
       - name: Jsonschema smoke (examples)
         run: |
           python - <<'PY'
+          from pathlib import Path
           import json
           from jsonschema import Draft202012Validator
-          # 按你的示例路径校验两个好例
-          sch_mf = json.load(open("schemas/mfusion_input.schema.json"))
-          doc_mf = json.load(open("tests/examples/Vec_Z2_mfusion.json"))
-          Draft202012Validator(sch_mf).validate(doc_mf)
-          sch_ui = json.load(open("schemas/umtc_input.schema.json"))
-          doc_ui = json.load(open("tests/examples/toric_umtc_input.min.json"))
-          Draft202012Validator(sch_ui).validate(doc_ui)
+
+          root = Path.cwd()
+          checks = {
+              "schemas/mfusion_input.schema.json": "tests/examples/Vec_Z2_mfusion.json",
+              "schemas/umtc_input.schema.json": "tests/examples/toric_umtc_input.min.json",
+          }
+
+          for schema_rel, example_rel in checks.items():
+              schema_path = root / schema_rel
+              example_path = root / example_rel
+
+              if not schema_path.exists():
+                  raise SystemExit(f"Missing schema file: {schema_path}")
+              if not example_path.exists():
+                  raise SystemExit(f"Missing example file: {example_path}")
+
+              schema = json.loads(schema_path.read_text(encoding="utf-8"))
+              document = json.loads(example_path.read_text(encoding="utf-8"))
+              Draft202012Validator(schema).validate(document)
+
           print("jsonschema smoke PASS")
           PY
 
