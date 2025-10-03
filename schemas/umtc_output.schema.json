@@ -1,0 +1,97 @@
+{
+  "$id": "https://ac.io/schemas/umtc_output.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ac-umtc output (v0)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "encoding",
+    "number_field",
+    "category_type",
+    "objects",
+    "qdim",
+    "global_dim",
+    "twist",
+    "S",
+    "T",
+    "checks",
+    "hashes",
+    "provenance"
+  ],
+  "properties": {
+    "format": { "const": "ac-umtc" },
+    "version": { "type": "string", "minLength": 1 },
+    "encoding": { "enum": ["exact", "float"] },
+    "number_field": {
+      "type": "string",
+      "pattern": "^cyclotomic\\([1-9][0-9]*\\)$"
+    },
+    "category_type": { "const": "umtc" },
+    "_meta": { "type": "object" },
+
+    "objects": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+
+    "scalar": {
+      "description": "v0 标量：允许 number 或字符串（如圆分域表达式、复数文本）",
+      "oneOf": [
+        { "type": "number" },
+        { "type": "string", "minLength": 1 }
+      ]
+    },
+
+    "qdim": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": { "^.+$": { "$ref": "#/properties/scalar" } }
+    },
+
+    "global_dim": { "$ref": "#/properties/scalar" },
+
+    "twist": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": { "^.+$": { "$ref": "#/properties/scalar" } }
+    },
+
+    "matrix": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "$ref": "#/properties/scalar" },
+        "minItems": 1
+      },
+      "minItems": 1
+    },
+
+    "S": { "$ref": "#/properties/matrix" },
+    "T": { "$ref": "#/properties/matrix" },
+
+    "checks": { "type": "object" },
+    "hashes": { "type": "object" },
+
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generated_by", "date", "sources"],
+      "properties": {
+        "generated_by": { "type": "string", "minLength": 1 },
+        "date": { "type": "string", "format": "date-time" },
+        "toolchain_version": { "type": ["string", "null"] },
+        "exact_backend_id": { "type": ["string", "null"] },
+        "numeric_policy": { "type": ["object", "null"] },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}

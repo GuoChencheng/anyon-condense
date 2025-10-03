@@ -1,0 +1,59 @@
+{
+  "$id": "https://ac.io/schemas/mfusion_input.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ac-mfusion input (v0)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "encoding",
+    "number_field",
+    "category_type",
+    "simple_objects",
+    "dual",
+    "fusion_rules"
+  ],
+  "properties": {
+    "format": { "const": "ac-mfusion" },
+    "version": { "type": "string", "minLength": 1 },
+    "encoding": { "enum": ["exact", "float"] },
+    "number_field": {
+      "type": "string",
+      "pattern": "^cyclotomic\\([1-9][0-9]*\\)$"
+    },
+    "category_type": { "const": "mfusion" },
+    "_meta": { "type": "object" },
+
+    "simple_objects": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+
+    "dual": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "map: object -> its dual",
+      "patternProperties": {
+        "^.+$": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "fusion_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "keys are '(a,b)' strings; values are {c: mult}",
+      "patternProperties": {
+        "^\\(.+?,.+\\)$": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^.+$": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    }
+  }
+}

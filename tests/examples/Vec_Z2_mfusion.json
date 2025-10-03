@@ -1,0 +1,22 @@
+{
+  "format": "ac-mfusion",
+  "version": "0.1",
+  "encoding": "float",
+  "number_field": "cyclotomic(1)",
+  "category_type": "mfusion",
+  "_meta": { "note": "Vec_{Z2} as a minimal fusion example" },
+
+  "simple_objects": ["1", "g"],
+
+  "dual": {
+    "1": "1",
+    "g": "g"
+  },
+
+  "fusion_rules": {
+    "(1,1)": { "1": 1 },
+    "(1,g)": { "g": 1 },
+    "(g,1)": { "g": 1 },
+    "(g,g)": { "1": 1 }
+  }
+}
