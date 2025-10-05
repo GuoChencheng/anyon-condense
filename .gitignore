@@ -10,3 +10,8 @@ dist/
 .cache/
 .pytest_cache/
 .mypy_cache/
+.venv/
+__pycache__/
+*.pyc
+.cache/
+*.ipynb_checkpoints/
