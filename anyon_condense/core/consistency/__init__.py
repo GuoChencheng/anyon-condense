@@ -9,6 +9,7 @@ from .numcheck import (
     max_abs_diff,
 )
 from .pentagon import check_pentagon_equations
+from .report import Report
 
 __all__ = [
     "approx_equal_matrices",
@@ -18,4 +19,5 @@ __all__ = [
     "check_modular_relations",
     "check_pentagon_equations",
     "max_abs_diff",
+    "Report",
 ]

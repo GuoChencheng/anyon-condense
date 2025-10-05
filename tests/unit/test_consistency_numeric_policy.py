@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from anyon_condense.core.consistency.hexagon import check_hexagon_equations
 from anyon_condense.core.consistency.modular import check_modular_relations
 from anyon_condense.core.consistency.numcheck import (
@@ -44,8 +46,12 @@ def test_modular_relations_noise_sensitivity():
 
     report_clean = check_modular_relations(s, t, policy)
     assert report_clean["status"] is True
-    assert report_clean["max_err_st3_s2"] <= 1e-12
-    assert report_clean["max_err_s4_i"] <= 1e-12
+    metrics = report_clean["metrics"]
+    assert metrics["max_err_st3_s2"] <= 1e-12
+    assert metrics["max_err_s4_i"] <= 1e-12
+    snapshot = report_clean["policy_snapshot"]
+    assert snapshot["tol_abs"] == pytest.approx(1e-10)
+    assert snapshot["tol_rel"] == pytest.approx(1e-10)
 
     noisy = [
         [entry + (1e-12 if (i + j) % 2 == 0 else -1e-12) for j, entry in enumerate(row)]
@@ -77,9 +83,11 @@ def test_pentagon_and_hexagon_wrappers():
     hexagon_report = check_hexagon_equations(equations, policy)
 
     assert pentagon_report["status"] is False
-    assert pentagon_report["failed"] == 1
-    assert pentagon_report["total"] == 3
+    pent_metrics = pentagon_report["metrics"]
+    assert pent_metrics["failed"] == pytest.approx(1.0)
+    assert pent_metrics["total"] == pytest.approx(3.0)
 
     assert hexagon_report["status"] is False
-    assert hexagon_report["failed"] == 1
-    assert hexagon_report["total"] == 3
+    hex_metrics = hexagon_report["metrics"]
+    assert hex_metrics["failed"] == pytest.approx(1.0)
+    assert hex_metrics["total"] == pytest.approx(3.0)
