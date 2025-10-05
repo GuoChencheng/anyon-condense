@@ -26,6 +26,9 @@ python tools/demo_m1.py
 # 查看当前数值策略（可被环境变量覆盖）
 ac num --show-policy
 
+# 预览归一化串化/哈希（可通过 CLI 覆盖 fmt/precision）
+ac num --dump --in tests/examples/Vec_Z2_mfusion.json --fmt fixed --precision 6
+
 # 调整精度并示例格式化/近似判断
 python - <<'PY'
 from anyon_condense.scalars.numeric_policy import NumericPolicy, format_float, approx_equal
