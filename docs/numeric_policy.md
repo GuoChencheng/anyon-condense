@@ -44,7 +44,21 @@ clip_small: true
 | `AC_ARRAY_REORDER` | `true/false` 控制数组重排 |
 | `AC_CLIP_SMALL` | `true/false` 控制极小值裁剪 |
 
-优先级：`overrides` > 环境变量 > 默认值。
+## 配置优先级
+
+`NumericPolicy` 的最终取值遵循：默认值 < 环境变量 < 显式 overrides。
+
+- `get_numeric_policy(env=os.environ, overrides=...)` 会按顺序合并，确保调用方可通过参数覆盖演示/调试设置。
+- CLI 子命令 `ac num --show-policy` / `ac num --dump` 也走同一通道，因此可以用 `AC_NUMERIC_*` 环境变量批量设置，再在命令行通过 `--fmt/--precision` 临时覆盖。
+
+## CLI 演示
+
+```bash
+ac num --show-policy
+ac num --dump --in tests/examples/Vec_Z2_mfusion.json --fmt fixed --precision 6
+```
+
+`show-policy` 输出 canonical JSON 快照，`dump` 会做数值归一化 → canonical 串化 → 对归一化 payload 取哈希，仅打印串化前 120 个字符与 `sha256`。
 
 ## 使用场景
 

@@ -8,8 +8,18 @@ import platform
 import sys
 from importlib import metadata
 
+from anyon_condense.core.exceptions import (
+    CanonicalizationError,
+    HashingError,
+    NumericFieldError,
+)
+from anyon_condense.core.hashing import sha256_of_payload
+from anyon_condense.core.numdump import normalize_payload_numbers
+from anyon_condense.core.utils import canonical_json_dump
+from anyon_condense.scalars.numeric_policy import NumericPolicy
+from anyon_condense.utils.profiles import get_numeric_policy
+
 from . import __version__
-from .scalars.numeric_policy import policy_from_env
 
 
 def _toolchain_info() -> str:
@@ -25,7 +35,7 @@ def _toolchain_info() -> str:
     return "|".join([py, _ver("ruff"), _ver("mypy")])
 
 
-def _handle_numeric_command(args: argparse.Namespace) -> int:
+def _build_numeric_policy(args: argparse.Namespace) -> NumericPolicy:
     overrides: dict[str, object] = {}
     if args.fmt:
         overrides["fmt"] = args.fmt
@@ -35,20 +45,82 @@ def _handle_numeric_command(args: argparse.Namespace) -> int:
         overrides["tol_abs"] = args.tol_abs
     if args.tol_rel is not None:
         overrides["tol_rel"] = args.tol_rel
-    if args.round_half:
+    if getattr(args, "round_half", None):
         overrides["round_half"] = args.round_half
-    if args.array_reorder is not None:
+    if getattr(args, "array_reorder", None) is not None:
         overrides["array_reorder"] = args.array_reorder
-    if args.clip_small is not None:
+    if getattr(args, "clip_small", None) is not None:
         overrides["clip_small"] = args.clip_small
 
-    policy = policy_from_env(os.environ, overrides or None)
+    return get_numeric_policy(env=os.environ, overrides=overrides or None)
+
+
+def _handle_num_show_policy(policy) -> int:
+    print(canonical_json_dump(policy.snapshot()))
+    return 0
+
+
+def _handle_num_dump(args: argparse.Namespace, policy) -> int:
+    if not args.dump:
+        return 1
+
+    if not args.input:
+        print(
+            "[ac:num] Missing required '--in' path when using --dump.", file=sys.stderr
+        )
+        return 2
+
+    try:
+        with open(args.input, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except FileNotFoundError:
+        print(f"[ac:num] File not found: {args.input}", file=sys.stderr)
+        return 2
+    except json.JSONDecodeError as exc:
+        print(
+            f"[ac:num] JSON decode error in {args.input}: {exc}",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        normalized = normalize_payload_numbers(payload, policy)
+    except NumericFieldError as exc:
+        print(f"[ac:num] Numeric error: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:  # pragma: no cover - unexpected failures
+        print(f"[ac:num] Unexpected error during normalization: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        canonical = canonical_json_dump(normalized)
+    except CanonicalizationError as exc:
+        print(f"[ac:num] Canonicalization error: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        digest = sha256_of_payload(normalized)
+    except HashingError as exc:
+        print(f"[ac:num] Hashing error: {exc}", file=sys.stderr)
+        return 2
+
+    print(f"PREFIX: {canonical[:120]}")
+    print(f"SHA256: {digest}")
+    return 0
+
+
+def _handle_numeric_command(
+    args: argparse.Namespace, num_parser: argparse.ArgumentParser
+) -> int:
+    policy = _build_numeric_policy(args)
 
     if args.show_policy:
-        print(json.dumps(policy.snapshot(), sort_keys=True, indent=2))
-        return 0
+        return _handle_num_show_policy(policy)
 
-    print("No numeric subcommand executed. Use '--show-policy' to inspect settings.")
+    if args.dump:
+        return _handle_num_dump(args, policy)
+
+    num_parser.print_help()
     return 1
 
 
@@ -61,50 +133,86 @@ def main(argv: list[str] | None = None) -> int:
 
     subparsers = parser.add_subparsers(dest="command")
 
+    # Common numeric policy override flags (reused across forms)
+    num_common = argparse.ArgumentParser(add_help=False)
+    num_common.add_argument(
+        "--fmt", choices=["auto", "fixed", "scientific"], help="Override fmt"
+    )
+    num_common.add_argument("--precision", type=int, help="Override precision")
+    num_common.add_argument("--tol-abs", type=float, help="Override absolute tolerance")
+    num_common.add_argument("--tol-rel", type=float, help="Override relative tolerance")
+    num_common.add_argument(
+        "--round-half", choices=["even", "away"], help="Override rounding mode"
+    )
+    num_common.add_argument(
+        "--array-reorder",
+        dest="array_reorder",
+        action="store_true",
+        help="Enable scalar array reordering",
+    )
+    num_common.add_argument(
+        "--no-array-reorder",
+        dest="array_reorder",
+        action="store_false",
+        help="Disable scalar array reordering",
+    )
+    num_common.add_argument(
+        "--clip-small",
+        dest="clip_small",
+        action="store_true",
+        help="Enable clipping of small values",
+    )
+    num_common.add_argument(
+        "--no-clip-small",
+        dest="clip_small",
+        action="store_false",
+        help="Disable clipping of small values",
+    )
+
     num_parser = subparsers.add_parser(
         "num",
         help="Numeric policy helpers",
         description="Inspect and override numeric policy",
+        parents=[num_common],
     )
+    num_parser.set_defaults(array_reorder=None, clip_small=None)
     num_parser.add_argument(
         "--show-policy",
         action="store_true",
         help="Print numeric policy snapshot",
     )
     num_parser.add_argument(
-        "--fmt", choices=["auto", "fixed", "scientific"], help="Override fmt"
-    )
-    num_parser.add_argument("--precision", type=int, help="Override precision")
-    num_parser.add_argument("--tol-abs", type=float, help="Override absolute tolerance")
-    num_parser.add_argument("--tol-rel", type=float, help="Override relative tolerance")
-    num_parser.add_argument(
-        "--round-half", choices=["even", "away"], help="Override rounding mode"
-    )
-    num_parser.add_argument(
-        "--array-reorder",
-        dest="array_reorder",
+        "--dump",
         action="store_true",
-        help="Enable scalar array reordering",
+        help="Normalize and canonical-dump a JSON file",
     )
     num_parser.add_argument(
-        "--no-array-reorder",
-        dest="array_reorder",
-        action="store_false",
-        help="Disable scalar array reordering",
+        "--in",
+        dest="input",
+        help="Path to input JSON for --dump",
     )
-    num_parser.add_argument(
-        "--clip-small",
-        dest="clip_small",
-        action="store_true",
-        help="Enable clipping of small values",
+
+    # Subcommands for compatibility: `ac num show-policy` and `ac num dump ...`
+    num_subparsers = num_parser.add_subparsers(dest="num_cmd")
+
+    num_show = num_subparsers.add_parser(
+        "show-policy",
+        help="Show current NumericPolicy snapshot",
+        parents=[num_common],
+        add_help=True,
     )
-    num_parser.add_argument(
-        "--no-clip-small",
-        dest="clip_small",
-        action="store_false",
-        help="Disable clipping of small values",
+    num_show.set_defaults(show_policy=True)
+
+    num_dump = num_subparsers.add_parser(
+        "dump",
+        help="Normalize and canonical-dump a JSON file",
+        parents=[num_common],
+        add_help=True,
     )
-    num_parser.set_defaults(array_reorder=None, clip_small=None)
+    num_dump.add_argument(
+        "--in", dest="input", required=True, help="Path to input JSON"
+    )
+    num_dump.set_defaults(dump=True)
 
     args = parser.parse_args(argv)
 
@@ -120,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "num":
-        return _handle_numeric_command(args)
+        return _handle_numeric_command(args, num_parser)
 
     parser.print_help()
     return 0

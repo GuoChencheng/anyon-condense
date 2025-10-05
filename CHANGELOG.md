@@ -11,3 +11,7 @@
 - 新增 `float_backend`（有限性检测、Neumaier 求和、稳定二范数、负零统一）
 - 新增 `NumericPolicy`（容差、格式化、数组重排、env 覆盖与快照）
 - CLI 增补 `ac num --show-policy`；README/文档记录数值策略示例
+## [0.1.0-dev] - M2-B1/B2 数值策略 CLI 扩展
+- 新增 `utils.get_numeric_policy`，统一 env/overrides 解析
+- CLI 支持 `ac num --show-policy` 与 `ac num --dump`（归一化串化+SHA256）
+- 增加 `test_profiles.py`、`test_cli_num.py` 覆盖；更新文档与 README 示范
