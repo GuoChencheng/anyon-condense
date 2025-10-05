@@ -5,9 +5,10 @@ from __future__ import annotations
 import sys
 from datetime import datetime as _datetime
 from datetime import timezone as _timezone
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Union
 
 from anyon_condense import __version__ as _AC_VERSION
+from anyon_condense.scalars.numeric_policy import NumericPolicy
 
 try:  # Python 3.8+: importlib.metadata
     from importlib import metadata as _im
@@ -16,7 +17,7 @@ except Exception:  # pragma: no cover - fallback for very old Python
 
 
 def _iso_utc_now() -> str:
-    """Return current UTC time formatted as ISO8601 with trailing 'Z'."""
+    """Return current UTC time formatted as ISO8601 with trailing ``Z``."""
 
     return (
         _datetime.now(_timezone.utc)
@@ -40,22 +41,36 @@ def _toolchain_version() -> str:
     return "|".join([py, _pkg_version_token("ruff"), _pkg_version_token("mypy")])
 
 
+def _coerce_policy_snapshot(
+    numeric_policy: Optional[Union[Mapping[str, Any], NumericPolicy]],
+) -> Optional[Dict[str, Any]]:
+    if numeric_policy is None:
+        return None
+    if isinstance(numeric_policy, NumericPolicy):
+        return dict(numeric_policy.snapshot())
+    if isinstance(numeric_policy, Mapping):
+        return dict(numeric_policy)
+    return None
+
+
 def build_provenance(
-    sources: Optional[Sequence[str]] = None,
+    sources: Optional[Iterable[str]] = None,
     *,
     generated_by: Optional[str] = None,
     exact_backend_id: Optional[str] = None,
-    numeric_policy: Optional[Dict[str, Any]] = None,
+    numeric_policy: Optional[Union[Mapping[str, Any], NumericPolicy]] = None,
+    toolchain_version: Optional[str] = None,
+    date_iso8601_utc: Optional[str] = None,
 ) -> Dict[str, Any]:
     src_list = [str(s) for s in sources] if sources else ["<unspecified>"]
     if not src_list:
         src_list = ["<unspecified>"]
     return {
         "generated_by": generated_by or f"ac {_AC_VERSION}",
-        "date": _iso_utc_now(),
-        "toolchain_version": _toolchain_version(),
+        "date": date_iso8601_utc or _iso_utc_now(),
+        "toolchain_version": toolchain_version or _toolchain_version(),
         "exact_backend_id": exact_backend_id,
-        "numeric_policy": numeric_policy,
+        "numeric_policy": _coerce_policy_snapshot(numeric_policy),
         "sources": src_list,
     }
 
