@@ -66,3 +66,12 @@ ac num --dump --in tests/examples/Vec_Z2_mfusion.json --fmt fixed --precision 6
 2. **串化输出**：结合 `format_float` 提供稳定的十进制表示，准备在 M2-A3 中进入 normalized dump。
 3. **数组排序**：对纯数值数组进行稳定排序，避免序列化 diff。
 4. **追溯**：通过 `policy.snapshot()` 将策略写入 provenance，方便重放与审计。
+
+## Hashing: normalized vs canonical
+
+- `sha256_of_payload(obj)` **不做数值归一化**，直接对 canonical JSON 串化结果取哈希。
+- `sha256_of_payload_normalized(obj, policy)` 先做 **数值归一化**（统一负零、十进制量化等），再 canonical，再 sha256。
+
+**何时使用：**
+- Float 管线的对拍、快照、跨平台比对：使用 `sha256_of_payload_normalized`，保证语义相同的浮点数据得到稳定哈希。
+- 兼容 M1 历史快照与外部接口：继续使用 `sha256_of_payload`。

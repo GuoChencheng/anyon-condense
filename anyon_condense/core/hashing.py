@@ -5,7 +5,10 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Dict, Sequence, Union
 
+from anyon_condense.scalars.numeric_policy import NumericPolicy
+
 from .exceptions import CanonicalizationError, HashingError
+from .numdump import normalize_payload_numbers
 from .utils import canonical_json_dump
 
 Number = Union[int, float]
@@ -125,8 +128,16 @@ def attach_hashes_inplace(payload: dict, fields: Sequence[str] | None = None) ->
     return hashes
 
 
+def sha256_of_payload_normalized(payload: Any, policy: NumericPolicy) -> str:
+    """Normalize numeric fields with ``policy`` before hashing payload."""
+
+    normalized = normalize_payload_numbers(payload, policy)
+    return sha256_of_payload(normalized)
+
+
 __all__ = [
     "sha256_of_payload",
+    "sha256_of_payload_normalized",
     "hash_matrix",
     "content_address",
     "hash_json_value",
