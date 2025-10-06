@@ -1,77 +1,96 @@
+# Numeric Policy & Normalized Hashing
 
-# Numeric Policy (M2-A2)
+## Why normalize first?
+- 同一个浮点值在不同平台/解释器上可能呈现为不同字符串（例如 `0.000000000001` vs `1e-12`）。
+- 如果直接对 canonical JSON 串化结果做 sha256，同语义对象可能得到不同指纹。
+- 解决方案：**数值归一化 → canonical → sha256**。
+  - 归一化会统一 `-0.0` 为 `+0.0`，拒绝 `NaN/±Inf`，并在十进制域按策略量化；
+  - 可选地对纯标量扁平数组排序，减少平台差异；
+  - 归一化后的对象仍是「数值语义」，因此 canonical/哈希不会改变业务信息。
 
-`NumericPolicy` 统一管理浮点容差、格式化与数组重排，保证跨机器可复现。
+## NumericPolicy: fields & defaults
 
-## 默认参数
-
-```yaml
-mode: float
-fmt: auto
-precision: 12
-tol_abs: 1e-10
-tol_rel: 1e-10
-round_half: even
-array_reorder: false
-clip_small: true
+```json
+{
+  "mode": "float",
+  "fmt": "auto",
+  "precision": 12,
+  "round_half": "even",
+  "tol_abs": 1e-10,
+  "tol_rel": 1e-10,
+  "array_reorder": false,
+  "clip_small": true
+}
 ```
 
-- **tol_abs / tol_rel**：混合容差，比较时使用 `max(tol_abs, tol_rel * max(|a|, |b|))`。
-- **fmt**：`auto` 根据数量级在定点/科学计数法间切换；`fixed` 固定小数位；`scientific` 使用有效数字。
-- **round_half**：`even`（银行家舍入）或 `away`（ties away from zero）。
-- **clip_small**：将 `|x| < 10^(-(precision+1))` 的数裁剪为 `0.0`。
-- **array_reorder**：如果数组为纯标量且允许重排，则按升序排序（先统一负零）。
-
-## 核心函数
-
-| 函数 | 功能 |
+| 字段 | 说明 |
 | --- | --- |
-| `NumericPolicy.snapshot()` | 返回可写入 provenance 的策略快照 |
-| `approx_equal(a, b, policy)` | 近似比较，自动归一负零/裁剪噪声 |
-| `format_float(x, policy)` | 根据策略生成十进制字符串 |
-| `clip_small(x, policy)` | 单值归一：拒绝非有限、统一负零、裁剪极小值 |
-| `reorder_scalar_array(arr, policy)` | 纯标量数组可按升序重排，其它保持原序 |
-| `policy_from_env(env, overrides)` | 读取环境变量并应用 overrides |
+| `fmt` | `fixed`：固定 `precision` 位小数；`scientific`：`precision` 位有效数字；`auto`：中等量级用定点，小/大量级用科学计数法。 |
+| `precision` | 十进制量化精度，与 `fmt` 共同作用。 |
+| `round_half` | `even`（银行家舍入）或 `away`（远离 0）。 |
+| `tol_abs` / `tol_rel` | M2-C1 的近似比较阈值。 |
+| `array_reorder` | 仅在数组元素全为纯 `int/float` 时排序，含 `bool`/嵌套时保持原序。 |
+| `clip_small` | 在阈值内裁剪为 0，稳定串化。 |
 
-## 环境变量
+## Configuration: defaults < env < overrides
 
-| 变量 | 说明 |
+| 层级 | 示例 |
 | --- | --- |
-| `AC_NUMERIC_FMT` | 设置 `fmt`（auto/fixed/scientific） |
-| `AC_NUMERIC_PREC` | 设置 `precision` |
-| `AC_TOL_ABS` / `AC_TOL_REL` | 设置绝对/相对容差 |
-| `AC_ROUND_HALF` | 设置舍入策略（even/away） |
-| `AC_ARRAY_REORDER` | `true/false` 控制数组重排 |
-| `AC_CLIP_SMALL` | `true/false` 控制极小值裁剪 |
+| 环境变量 | `AC_NUMERIC_FMT=scientific AC_NUMERIC_PREC=6`<br>`AC_TOL_ABS=1e-12 AC_TOL_REL=1e-9`<br>`AC_ARRAY_REORDER=true` |
+| CLI 覆盖 | `ac num dump --fmt fixed --precision 6 --in file.json` |
 
-## 配置优先级
+常用环境变量：`AC_NUMERIC_FMT`、`AC_NUMERIC_PREC`、`AC_TOL_ABS`、`AC_TOL_REL`、`AC_ARRAY_REORDER`、`AC_CLIP_SMALL`。
 
-`NumericPolicy` 的最终取值遵循：默认值 < 环境变量 < 显式 overrides。
+## Hashing: raw vs normalized
 
-- `get_numeric_policy(env=os.environ, overrides=...)` 会按顺序合并，确保调用方可通过参数覆盖演示/调试设置。
-- CLI 子命令 `ac num --show-policy` / `ac num --dump` 也走同一通道，因此可以用 `AC_NUMERIC_*` 环境变量批量设置，再在命令行通过 `--fmt/--precision` 临时覆盖。
+- `sha256_of_payload(obj)`: **raw**；不做归一化，保留 M1 兼容行为。
+- `sha256_of_payload_normalized(obj, policy)`: **推荐**；先 `normalize_payload_numbers`，再 canonical，最后 sha256。
 
-## CLI 演示
+使用建议：
+- **发布、对拍、快照基线** → 用 normalized；
+- **兼容历史数据** → 使用 raw，同时在文档里说明潜在的跨平台差异。
+
+## CLI quick reference
 
 ```bash
-ac num --show-policy
-ac num --dump --in tests/examples/Vec_Z2_mfusion.json --fmt fixed --precision 6
+# 查看当前策略（已经吸收 env 覆盖）
+ac num show-policy
+
+# 归一化串化预览（默认策略）
+ac num dump --in tests/examples/Vec_Z2_mfusion.json
+
+# CLI 覆盖（示例：fixed，6 位小数）
+ac num dump --in tests/examples/Vec_Z2_mfusion.json --fmt fixed --precision 6
 ```
 
-`show-policy` 输出 canonical JSON 快照，`dump` 会做数值归一化 → canonical 串化 → 对归一化 payload 取哈希，仅打印串化前 120 个字符与 `sha256`。
+`show-policy` 输出 canonical JSON 快照；`dump` 打印两行：
 
-## 使用场景
+```
+PREFIX: {<canonical json prefix, first 120 chars>}
+SHA256: sha256:<hash>
+```
 
-1. **数值比对**：在 `check_*` 家族中调用 `approx_equal`。
-2. **串化输出**：结合 `format_float` 提供稳定的十进制表示，准备在 M2-A3 中进入 normalized dump。
-3. **数组排序**：对纯数值数组进行稳定排序，避免序列化 diff。
-4. **追溯**：通过 `policy.snapshot()` 将策略写入 provenance，方便重放与审计。
+## Provenance
 
-## Hashing: normalized vs canonical
+写出路径可将策略快照写入 `provenance.numeric_policy`：
 
-- `sha256_of_payload(obj)` **不做数值归一化**，直接对 canonical JSON 串化结果取哈希。
-- `sha256_of_payload_normalized(obj, policy)` 先做 **数值归一化**（统一负零、十进制量化等），再 canonical，再 sha256。
+```json
+"provenance": {
+  "generated_by": "ac 0.1.0-dev",
+  "date": "2025-10-05T23:52:51Z",
+  "toolchain_version": "py3.12|Darwin-arm64",
+  "numeric_policy": {
+    "mode": "float",
+    "tol_abs": 1e-10,
+    "tol_rel": 1e-10,
+    "fmt": "auto",
+    "precision": 12,
+    "round_half": "even",
+    "array_reorder": false,
+    "clip_small": true
+  },
+  "sources": ["tests/examples/Vec_Z2_mfusion.json"]
+}
+```
 
-**何时使用：**
-- Float 管线的对拍、快照、跨平台比对：使用 `sha256_of_payload_normalized`，保证语义相同的浮点数据得到稳定哈希。
-- 兼容 M1 历史快照与外部接口：继续使用 `sha256_of_payload`。
+这样任何人都可以在另一台机器上复用相同策略 → 归一化 → canonical → hash 的流程。

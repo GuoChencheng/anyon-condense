@@ -20,23 +20,44 @@ python tools/demo_m1.py
 
 若看到输出里有 `Loaded mfusion input OK`、`canonical[...]`、`sha256:...`，说明环境可用。
 
-### M2（数值策略）快速演示
+## M2 Quick Demo: normalize → canonical → hash
+
+> 目标：1 分钟走通「策略 → 归一化预览 → 稳定哈希」的端到端流程。
+
+### 1) 查看当前策略
 
 ```bash
-# 查看当前数值策略（可被环境变量覆盖）
-ac num --show-policy
-
-# 预览归一化串化/哈希（可通过 CLI 覆盖 fmt/precision）
-ac num --dump --in tests/examples/Vec_Z2_mfusion.json --fmt fixed --precision 6
-
-# 调整精度并示例格式化/近似判断
-python - <<'PY'
-from anyon_condense.scalars.numeric_policy import NumericPolicy, format_float, approx_equal
-p = NumericPolicy(fmt="auto", precision=4)
-print("format_float(1e-7):", format_float(1e-7, p))
-print("approx_equal(1, 1+5e-11):", approx_equal(1.0, 1.0+5e-11, p))
-PY
+ac num show-policy
 ```
+
+示例输出（canonical JSON，字段顺序稳定）：
+
+```json
+{"array_reorder":false,"clip_small":true,"fmt":"auto","mode":"float","precision":12,"round_half":"even","tol_abs":1e-10,"tol_rel":1e-10}
+```
+
+### 2) 归一化串化 + 哈希预览
+
+```bash
+# 默认策略
+ac num dump --in tests/examples/Vec_Z2_mfusion.json
+
+# CLI 覆盖（示例：fixed，小数 6 位）
+ac num dump --in tests/examples/Vec_Z2_mfusion.json --fmt fixed --precision 6
+```
+
+两条命令都会打印两行：
+
+```
+PREFIX: {<canonical json prefix, first 120 chars>}
+SHA256: sha256:xxxxxxxx...
+```
+
+### 3) 为什么要 normalize → canonical → hash？
+
+- 浮点 `repr` 在不同平台可能不同，直接哈希 canonical JSON 会导致同语义对象出现不同指纹。
+- 先按 `NumericPolicy` 归一化（统一负零、拒绝非有限、十进制量化、可选数组重排），再 canonical、最后 sha256，可获得跨平台稳定输出。
+- 详情与策略字段说明见 `docs/numeric_policy.md`。
 
 ---
 
