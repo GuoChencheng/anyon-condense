@@ -6,6 +6,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any, Dict
 
 from anyon_condense.core.exceptions import CanonicalizationError, NumericFieldError
 from anyon_condense.core.hashing import sha256_of_payload
@@ -36,7 +37,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _read_json(path: Path) -> object:
+def _read_json(path: Path) -> Any:
     try:
         with path.open("r", encoding="utf-8") as handle:
             return json.load(handle)
@@ -59,7 +60,11 @@ def main(argv: list[str] | None = None) -> int:
 
     policy = get_numeric_policy(env=os.environ, overrides=overrides or None)
 
-    payload = _read_json(Path(args.input))
+    payload_obj = _read_json(Path(args.input))
+    if not isinstance(payload_obj, dict):
+        print("[demo] Top-level JSON must be an object", file=sys.stderr)
+        return 2
+    payload: Dict[str, Any] = payload_obj
 
     try:
         before = canonical_json_dump(payload)
@@ -71,7 +76,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     try:
-        normalized = normalize_payload_numbers(payload, policy)
+        normalized_obj = normalize_payload_numbers(payload, policy)
+        if not isinstance(normalized_obj, dict):
+            print("[demo] Normalized payload is not a JSON object", file=sys.stderr)
+            return 2
+        normalized: Dict[str, Any] = normalized_obj
         after = canonical_json_dump(normalized)
         digest = sha256_of_payload(normalized)
     except (NumericFieldError, CanonicalizationError) as exc:
