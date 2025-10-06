@@ -44,8 +44,9 @@ def test_modular_relations_noise_sensitivity():
 
     report_clean = check_modular_relations(s, t, policy)
     assert report_clean["status"] is True
-    assert report_clean["max_err_st3_s2"] <= 1e-12
-    assert report_clean["max_err_s4_i"] <= 1e-12
+    metrics_clean = report_clean["metrics"]
+    assert metrics_clean["max_err_st3_s2"] <= 1e-12
+    assert metrics_clean["max_err_s4_i"] <= 1e-12
 
     noisy = [
         [entry + (1e-12 if (i + j) % 2 == 0 else -1e-12) for j, entry in enumerate(row)]

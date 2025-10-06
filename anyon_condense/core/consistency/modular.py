@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import List, Sequence, Union
+from typing import Any, Dict, List, Sequence, Union
 
 from anyon_condense.core.consistency.numcheck import (
     approx_equal_matrices,
     max_abs_diff,
 )
 from anyon_condense.scalars.numeric_policy import NumericPolicy
+
+from .report import Report
 
 Number = Union[int, float, complex]
 
@@ -48,7 +50,7 @@ def check_modular_relations(
     s_matrix: Sequence[Sequence[Number]],
     t_matrix: Sequence[Sequence[Number]],
     policy: NumericPolicy,
-) -> dict[str, Union[bool, float]]:
+) -> Dict[str, Any]:
     """Check modular identities using approximate comparisons."""
 
     s_complex = [[complex(entry) for entry in row] for row in s_matrix]
@@ -63,8 +65,14 @@ def check_modular_relations(
     ok_st3_eq_s2 = approx_equal_matrices(st_cubed, s_squared, policy)
     ok_s4_eq_i = approx_equal_matrices(s_fourth, identity, policy)
 
-    return {
-        "status": bool(ok_st3_eq_s2 and ok_s4_eq_i),
+    metrics = {
         "max_err_st3_s2": max_abs_diff(st_cubed, s_squared),
         "max_err_s4_i": max_abs_diff(s_fourth, identity),
     }
+
+    report = Report.from_policy(
+        status=bool(ok_st3_eq_s2 and ok_s4_eq_i),
+        metrics=metrics,
+        policy=policy,
+    )
+    return report.to_dict()
